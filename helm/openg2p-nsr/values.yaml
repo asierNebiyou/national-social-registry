@@ -105,6 +105,9 @@ registry:
   # Name of this registry's tile in IAM. The roles/permissions catalog itself is
   # registry-agnostic and comes from the subchart.
   iamRegister:
+    # Rancher skips Helm hooks. Null these so the Job/ConfigMap are regular resources.
+    annotations: null
+    payloadAnnotations: null
     applicationDescription: "National Social Registry"
 
   # Functional-ID pools, one per register. Declared explicitly so this overlay is
