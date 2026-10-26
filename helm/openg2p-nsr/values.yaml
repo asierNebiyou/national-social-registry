@@ -99,11 +99,6 @@ registry:
     loadSampleData: true
     loadImages: true
     loadTemplates: true
-    # Copy the country's code lists from Master Data's API into this registry's
-    # own attribute tables (LOAD_ATTRIBUTES, load_attributes_from_mds.py in the
-    # pinned openg2p-registry). Inert on platform versions that read code lists
-    # live from Master Data, which dropped the setting; remove it with that pin.
-    loadAttributes: true
 
   # staffUi and beneApi are consumed as-is from the openg2p-registry base images
   # (subchart defaults already point at openg2p/openg2p-registry-*), so they are
