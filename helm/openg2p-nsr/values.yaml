@@ -80,6 +80,13 @@ registry:
       repository: openg2p/openg2p-nsr-celery
       tag: 0.0.0-develop
   dbSeed:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 256Mi
+      limits:
+        # Note: FR uses 1Gi. NSR's seed is larger; adjust this if OOMKilled occurs during large (250k) seeding.
+        memory: 1Gi
     image:
       repository: openg2p/openg2p-nsr-db-seed
       tag: 0.0.0-develop
