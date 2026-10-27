@@ -8,15 +8,43 @@ from .utils.validations import (
     as_int,
     fallback_record_name,
     has_keys,
+    validate_enum_values,
     validation_error,
 )
 
 _logger = logging.getLogger("g2p-register-domain-service")
 
 
+def _enum_fields() -> dict:
+    # Imported lazily: ..models imports these services at module level, so a
+    # top-level import here would be circular whenever services load first.
+    from ..models.enums import (
+        CookingFuelEnum,
+        DwellingTypeEnum,
+        HeadshipTypeEnum,
+        LightingSourceEnum,
+        MobilePhoneTypeEnum,
+        SanitationTypeEnum,
+        TenureStatusEnum,
+        WaterSourceTypeEnum,
+    )
+
+    return {
+        "headship_type": HeadshipTypeEnum,
+        "dwelling_type": DwellingTypeEnum,
+        "tenure_status": TenureStatusEnum,
+        "water_source_type": WaterSourceTypeEnum,
+        "sanitation_type": SanitationTypeEnum,
+        "lighting_source": LightingSourceEnum,
+        "cooking_fuel_type": CookingFuelEnum,
+        "mobile_phone_type": MobilePhoneTypeEnum,
+    }
+
+
 class G2PRegisterDomainServiceHousehold(G2PRegisterDomainService):
     async def validate_domain_attributes(self, records: list[dict]):
         for record in records:
+            validate_enum_values(record, _enum_fields())
             self._validate_household_size(record)
             self._validate_overcrowding(record)
             self._validate_elderly_member(record)

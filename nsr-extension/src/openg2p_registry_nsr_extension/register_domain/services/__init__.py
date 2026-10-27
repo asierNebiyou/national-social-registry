@@ -24,3 +24,4 @@ from .g2p_register_domain_service_individual_livestock import (
 from .g2p_register_domain_service_individual_vulnerability import (
     G2PRegisterDomainServiceIndividualVulnerability,
 )
+from .g2p_intake_form_data_service_nsr import G2PNSRIntakeFormDataService

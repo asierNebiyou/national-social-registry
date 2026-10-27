@@ -4,11 +4,43 @@ from openg2p_registry_core.services import G2PRegisterDomainService
 
 from .utils.validations import fallback_record_name
 
+from .utils.validations import validate_enum_values
+
 _logger = logging.getLogger("g2p-register-household-housing-and-services-service")
+
+
+def _enum_fields() -> dict:
+    # Imported lazily: ..models imports these services at module level, so a
+    # top-level import here would be circular whenever services load first.
+    from ..models.enums import (
+        CookingFuelEnum,
+        DwellingTypeEnum,
+        FloorMaterialEnum,
+        LightingSourceEnum,
+        RoofMaterialEnum,
+        SanitationTypeEnum,
+        TenureStatusEnum,
+        WallMaterialEnum,
+        WaterSourceTypeEnum,
+    )
+
+    return {
+        "dwelling_type": DwellingTypeEnum,
+        "roof_material": RoofMaterialEnum,
+        "wall_material": WallMaterialEnum,
+        "floor_material": FloorMaterialEnum,
+        "tenure_status": TenureStatusEnum,
+        "water_source_type": WaterSourceTypeEnum,
+        "sanitation_type": SanitationTypeEnum,
+        "lighting_source": LightingSourceEnum,
+        "cooking_fuel_type": CookingFuelEnum,
+    }
 
 
 class G2PRegisterDomainServiceHouseholdHousingAndServices(G2PRegisterDomainService):
     async def validate_domain_attributes(self, records: list[dict]):
+        for record in records:
+            validate_enum_values(record, _enum_fields())
         _logger.info("Validating household housing and services domain attributes")
         return
 

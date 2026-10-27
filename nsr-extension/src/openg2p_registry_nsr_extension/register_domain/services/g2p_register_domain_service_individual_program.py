@@ -2,13 +2,25 @@ import logging
 
 from openg2p_registry_core.services import G2PRegisterDomainService
 
-from .utils.validations import fallback_record_name, validate_program_records
+from .utils.validations import fallback_record_name, validate_enum_values, validate_program_records
 
 _logger = logging.getLogger("g2p-register-individualprogram-service")
 
 
+def _enum_fields() -> dict:
+    # Imported lazily: ..models imports these services at module level, so a
+    # top-level import here would be circular whenever services load first.
+    from ..models.enums import ProgramEnum
+
+    return {
+        "program_name": ProgramEnum,
+    }
+
+
 class G2PRegisterDomainServiceIndividualProgram(G2PRegisterDomainService):
     async def validate_domain_attributes(self, records: list[dict]):
+        for record in records:
+            validate_enum_values(record, _enum_fields())
         validate_program_records(records)
 
     def construct_search_text(self, payload: dict, extra: list[str] = None) -> str:

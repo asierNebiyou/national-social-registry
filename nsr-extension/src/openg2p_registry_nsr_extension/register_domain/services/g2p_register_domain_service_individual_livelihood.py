@@ -2,14 +2,32 @@ import logging
 
 from openg2p_registry_core.services import G2PRegisterDomainService
 
-from .utils.validations import fallback_record_name, has_keys, is_blank, validation_error
+from .utils.validations import fallback_record_name, has_keys, is_blank, validate_enum_values, validation_error
 
 _logger = logging.getLogger("g2p-register-individual-livelihood-service")
+
+
+def _enum_fields() -> dict:
+    # Imported lazily: ..models imports these services at module level, so a
+    # top-level import here would be circular whenever services load first.
+    from ..models.enums import (
+        EmploymentStatusEnum,
+        LivelihoodEnum,
+        MobilePhoneTypeEnum,
+    )
+
+    return {
+        "primary_livelihood": LivelihoodEnum,
+        "secondary_livelihood": LivelihoodEnum,
+        "employment_status": EmploymentStatusEnum,
+        "mobile_phone_type": MobilePhoneTypeEnum,
+    }
 
 
 class G2PRegisterDomainServiceIndividualLivelihood(G2PRegisterDomainService):
     async def validate_domain_attributes(self, records: list[dict]):
         for record in records:
+            validate_enum_values(record, _enum_fields())
             self._validate_livelihood_distinct(record)
 
     def _validate_livelihood_distinct(self, record: dict) -> None:

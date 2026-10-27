@@ -2,13 +2,26 @@ import logging
 
 from openg2p_registry_core.services import G2PRegisterDomainService
 
-from .utils.validations import ensure_no_duplicate_key, fallback_record_name
+from .utils.validations import ensure_no_duplicate_key, fallback_record_name, validate_enum_values
 
 _logger = logging.getLogger("g2p-register-domain-service")
 
 
+def _enum_fields() -> dict:
+    # Imported lazily: ..models imports these services at module level, so a
+    # top-level import here would be circular whenever services load first.
+    from ..models.enums import DisabilityDomainEnum, DisabilitySeverityEnum
+
+    return {
+        "disability_domain": DisabilityDomainEnum,
+        "disability_severity": DisabilitySeverityEnum,
+    }
+
+
 class G2PRegisterDomainServiceIndividualDisability(G2PRegisterDomainService):
     async def validate_domain_attributes(self, records: list[dict]):
+        for record in records:
+            validate_enum_values(record, _enum_fields())
         self._validate_no_duplicate_disability_domain(records)
 
     def _validate_no_duplicate_disability_domain(self, records: list[dict]) -> None:

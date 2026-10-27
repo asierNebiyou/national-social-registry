@@ -4,20 +4,24 @@ from datetime import date
 from openg2p_registry_core.models import G2PRegisterChangeRequest
 from openg2p_registry_core.models.enum import ChangeActionEnum
 from openg2p_registry_core.services import G2PRegisterDomainService
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .utils.validations import (
+    as_bool,
     as_int,
     fallback_record_name,
     has_keys,
     is_blank,
     parse_date,
+    validate_enum_values,
     validation_error,
 )
 from .utils.household_roster import (
     affected_household_ids,
     calculate_age,
     has_roster_affecting_changes,
+    is_active_member,
     member_payload,
     normalize_link,
     recompute_household_roster_for_household,
@@ -26,12 +30,114 @@ from .utils.household_roster import (
 _logger = logging.getLogger("g2p-register-domain-service")
 
 
+def _enum_fields() -> dict:
+    # Imported lazily: ..models imports these services at module level, so a
+    # top-level import here would be circular whenever services load first.
+    from openg2p_registry_core.models import GenderEnum, MaritalStatusEnum
+    from ..models.enums import (
+        AgeMethodEnum,
+        CitizenshipCategoryEnum,
+        DisabilityStatusEnum,
+        DisplacementStatusEnum,
+        EmploymentStatusEnum,
+        IdentityEvidenceTypeEnum,
+        PastoralistClassificationEnum,
+        PreferredContactMethodEnum,
+        RelationshipToHeadEnum,
+        ResidencyStatusEnum,
+        VerificationStatusEnum,
+    )
+
+    return {
+        "gender": GenderEnum,
+        "marital_status": MaritalStatusEnum,
+        "foundational_id_verification_status": VerificationStatusEnum,
+        "identity_evidence_type": IdentityEvidenceTypeEnum,
+        "age_method": AgeMethodEnum,
+        "citizenship_category": CitizenshipCategoryEnum,
+        "relationship_to_head": RelationshipToHeadEnum,
+        "residency_status": ResidencyStatusEnum,
+        "preferred_contact_method": PreferredContactMethodEnum,
+        "disability_status": DisabilityStatusEnum,
+        "displacement_status": DisplacementStatusEnum,
+        "pastoralist_classification": PastoralistClassificationEnum,
+        "employment_status": EmploymentStatusEnum,
+    }
+
+
 class G2PRegisterDomainServiceIndividual(G2PRegisterDomainService):
     async def validate_domain_attributes(self, records: list[dict]):
         for record in records:
+            validate_enum_values(record, _enum_fields())
             self._validate_middle_name(record)
             self._validate_birth_date(record)
             self._validate_estimated_age(record)
+            self._validate_relationship_to_head(record)
+        self._validate_single_head(records)
+
+    def _validate_single_head(self, records: list[dict]) -> None:
+        # Records saved together without a household link (e.g. the members
+        # of one intake form) are counted as one household.
+        heads_per_household: dict[str | None, int] = {}
+        for record in records:
+            if as_bool(record.get("is_head")) is not True:
+                continue
+            household_id = normalize_link(record.get("link_internal_record_id"))
+            heads_per_household[household_id] = heads_per_household.get(household_id, 0) + 1
+        if any(count > 1 for count in heads_per_household.values()):
+            validation_error("Only one household member can be the head")
+
+    async def _validate_no_existing_head(
+        self,
+        change_request: G2PRegisterChangeRequest,
+        record: dict,
+        individual,
+        session: AsyncSession,
+    ) -> None:
+        """Reject a change that makes someone head of a household that already has one."""
+        from openg2p_registry_core.models import RecordStatusEnum
+        from ..models.individual import G2PRegisterIndividual
+
+        if not any(key in record for key in ("is_head", "link_internal_record_id", "record_status")):
+            return
+        merged = {**(individual.to_dict() if individual else {}), **record}
+        if as_bool(merged.get("is_head")) is not True or not is_active_member(merged):
+            return
+        household_id = normalize_link(merged.get("link_internal_record_id"))
+        if not household_id:
+            return
+
+        existing_head = await session.execute(
+            select(G2PRegisterIndividual.internal_record_id)
+            .where(
+                G2PRegisterIndividual.link_internal_record_id == household_id,
+                G2PRegisterIndividual.is_head.is_(True),
+                G2PRegisterIndividual.internal_record_id != change_request.internal_record_id,
+                or_(
+                    G2PRegisterIndividual.record_status.is_(None),
+                    G2PRegisterIndividual.record_status == RecordStatusEnum.ACTIVE.value,
+                ),
+            )
+            .limit(1)
+        )
+        if existing_head.first() is not None:
+            validation_error("Only one household member can be the head")
+
+    def _validate_relationship_to_head(self, record: dict) -> None:
+        if "is_head" not in record and "relationship_to_head" not in record:
+            # Partial payload that does not touch headship (e.g. an API change
+            # request editing another field) — nothing to check here.
+            return
+        if as_bool(record.get("is_head")) is True:
+            # The head is marked by is_head (NSR-07), not by a relationship. A
+            # value chosen on the form before ticking is_head is still
+            # submitted, so drop it and store the head without one.
+            record["relationship_to_head"] = None
+            return
+        if is_blank(record.get("link_internal_record_id")):
+            return
+        if is_blank(record.get("relationship_to_head")):
+            validation_error("relationship_to_head is required for household members")
 
     def _validate_middle_name(self, record: dict) -> None:
         if not has_keys(record, "middle_name"):
@@ -134,6 +240,15 @@ class G2PRegisterDomainServiceIndividual(G2PRegisterDomainService):
         individual = await session.get(
             G2PRegisterIndividual, change_request.internal_record_id
         )
+
+        for record in payload_obj.change_payload:
+            if record.get("edit_action") in {
+                ChangeActionEnum.DELETE.value,
+                ChangeActionEnum.NO_CHANGE.value,
+            }:
+                continue
+            await self._validate_no_existing_head(change_request, record, individual, session)
+
         if not individual:
             return
 

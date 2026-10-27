@@ -93,6 +93,23 @@ def fallback_record_name(payload: dict, label: str) -> str:
     return label
 
 
+def validate_enum_values(record: dict, fields: dict) -> None:
+    """Reject coded values the register model will not accept.
+
+    The platform only validates the row against the pydantic schema when the
+    change request is APPROVED (inside the AWE webhook), where a bad code makes
+    the approval fail silently and the request stays PENDING forever. Checking
+    here surfaces the problem at save time instead. `fields` maps field name
+    to its Enum class; blank values are ignored.
+    """
+    for field, enum_cls in fields.items():
+        if field not in record or is_blank(record.get(field)):
+            continue
+        allowed = {item.value for item in enum_cls}
+        if str(record.get(field)) not in allowed:
+            validation_error(f"{field} must be one of " + ", ".join(sorted(allowed)))
+
+
 def ensure_no_duplicate_key(records: list[dict], key: str, message: str) -> None:
     seen: set[str] = set()
     for record in records:
