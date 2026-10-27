@@ -8,6 +8,10 @@ name: Checks
 #   * the sample generator and reporting views only use values that exist in the
 #     extension's enums (test_enum_values.py) — these are String columns, so bad
 #     values insert silently and are found much later, somewhere else
+#   * the extension's unit tests (nsr-extension/tests) — the business rules in
+#     the domain services. They import the registry platform, which is not on
+#     PyPI, so they run inside the pinned openg2p-registry base image (the same
+#     RP_VERSION the Dockerfiles build on); this is the one Docker-using step
 #
 # Runs in parallel with build-publish.yml.
 
@@ -29,3 +33,9 @@ jobs:
         run: python -m pytest test/test_rp_pin_lockstep.py -q
       - name: seeder and views match the extension enums
         run: python -m pytest test/test_enum_values.py -q
+      - name: extension unit tests
+        run: |
+          RP_VERSION=$(sed -n 's/^ARG RP_VERSION=//p' docker/staff-api/Dockerfile)
+          docker run --rm --user 0 -v "$PWD:/src" -w /src --entrypoint sh \
+            "openg2p/openg2p-registry-staff-api:${RP_VERSION}" -c \
+            "pip install --quiet -e 'nsr-extension[test]' && python -m pytest nsr-extension/tests -q"
