@@ -307,9 +307,24 @@ class G2PRegisterDomainServiceIndividual(G2PRegisterDomainService):
                 household = await session.get(G2PRegisterHousehold, individual.link_internal_record_id)
                 if not household:
                     continue
+                if not self._is_husband_of_household(individual, household):
+                    continue
 
                 household.husband_dead = True
                 household.husband_dead_date = change_request.approved_at.date()
+
+    @staticmethod
+    def _is_husband_of_household(individual, household) -> bool:
+        """husband_dead is only about the household's husband: a deceased member
+        who is MALE and is either the head or the head's spouse. Any other death
+        (a child, a woman, a female head) must leave it untouched."""
+        if str(individual.gender or "").upper() != "MALE":
+            return False
+        is_head = (
+            individual.internal_record_id == household.household_head_internal_record_id
+            or getattr(individual, "is_head", None) is True
+        )
+        return is_head or str(individual.relationship_to_head or "").upper() == "SPOUSE"
 
     @staticmethod
     def _calculate_age(birth_date):
