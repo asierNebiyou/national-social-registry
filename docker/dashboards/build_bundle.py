@@ -3,6 +3,7 @@
 
 Produces the importable ZIP that ships with NSR:
 
+    export NSR_SQLALCHEMY_URI=postgresql+psycopg2://postgres@commons-postgresql:5432/nsr
     python build_bundle.py --out nsr-dashboards.zip
     superset import-dashboards -p nsr-dashboards.zip -u admin
 
@@ -586,12 +587,18 @@ def main():
         os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
         "helm", "openg2p-nsr", "files", "nsr-dashboards.zip"))
     p.add_argument("--db-name", default=DB_NAME)
+    # No default: a default connection string invites someone to type a real
+    # password over it and commit it. Leave the password out — the chart's
+    # import job (templates/analytics-jobs.yaml) rewrites the connection with
+    # the registry DB user and the password from its Secret after the import.
     p.add_argument("--sqlalchemy-uri",
-                   default="postgresql+psycopg2://postgres:XXXXX@commons-postgresql:5432/nsr",
-                   help="connection string recorded in the bundle; the password "
-                        "is replaced at import time by Superset if left as a "
-                        "placeholder, or override per environment")
+                   default=os.environ.get("NSR_SQLALCHEMY_URI"),
+                   help="connection string recorded in the bundle, without a "
+                        "password, e.g. postgresql+psycopg2://postgres@"
+                        "commons-postgresql:5432/nsr (or set NSR_SQLALCHEMY_URI)")
     args = p.parse_args()
+    if not args.sqlalchemy_uri:
+        p.error("--sqlalchemy-uri (or NSR_SQLALCHEMY_URI) is required")
 
     dsn = dict(
         dbname=os.environ.get("NSR_DB", "nsr"),
