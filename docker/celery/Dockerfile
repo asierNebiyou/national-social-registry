@@ -7,7 +7,7 @@
 # worker or beat, selected at runtime via CELERY_APP.
 #
 # Build context = repo root (so nsr-extension/ is reachable).
-ARG RP_VERSION=0.0.0-develop.430
+ARG RP_VERSION=1.2.2-rc.557
 FROM openg2p/openg2p-registry-celery:${RP_VERSION}
 
 # Option C: select NSR's domain model (coexists with the base image's reference
