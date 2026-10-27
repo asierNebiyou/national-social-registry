@@ -5,6 +5,7 @@ from openg2p_registry_core.services import G2PRegisterDomainService
 from .utils.validations import (
     as_bool,
     as_float,
+    fallback_record_name,
     has_keys,
     is_blank,
     validation_error,
@@ -66,4 +67,4 @@ class G2PRegisterDomainServiceIndividualLand(G2PRegisterDomainService):
             for key in keys
             if str(payload.get(key) or "").strip()
         )
-        return " ".join(record_name).strip()
+        return " ".join(record_name).strip() or fallback_record_name(payload, "Land")

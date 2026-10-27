@@ -2,7 +2,7 @@ import logging
 
 from openg2p_registry_core.services import G2PRegisterDomainService
 
-from .utils.validations import ensure_no_duplicate_key
+from .utils.validations import ensure_no_duplicate_key, fallback_record_name
 
 _logger = logging.getLogger("g2p-register-individual-livestock-service")
 
@@ -44,4 +44,4 @@ class G2PRegisterDomainServiceIndividualLivestock(G2PRegisterDomainService):
             for key in keys
             if str(payload.get(key) or "").strip()
         )
-        return " ".join(record_name).strip()
+        return " ".join(record_name).strip() or fallback_record_name(payload, "Livestock")

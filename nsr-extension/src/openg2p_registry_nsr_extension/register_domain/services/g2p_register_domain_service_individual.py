@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .utils.validations import (
     as_int,
+    fallback_record_name,
     has_keys,
     is_blank,
     parse_date,
@@ -118,7 +119,7 @@ class G2PRegisterDomainServiceIndividual(G2PRegisterDomainService):
             if str(payload.get(key) or "").strip()
         )
 
-        return " ".join(record_name).strip()
+        return " ".join(record_name).strip() or fallback_record_name(payload, "Individual")
 
     async def pre_approve(self, change_request: G2PRegisterChangeRequest, session: AsyncSession):
         from openg2p_registry_core.models import G2PRegisterChangeRequestPayload

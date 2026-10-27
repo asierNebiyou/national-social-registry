@@ -6,6 +6,7 @@ from .utils.validations import (
     as_bool,
     as_float,
     as_int,
+    fallback_record_name,
     has_keys,
     validation_error,
 )
@@ -128,4 +129,4 @@ class G2PRegisterDomainServiceHousehold(G2PRegisterDomainService):
             if str(payload.get(key) or "").strip()
         )
 
-        return " ".join(record_name).strip()
+        return " ".join(record_name).strip() or fallback_record_name(payload, "Household")

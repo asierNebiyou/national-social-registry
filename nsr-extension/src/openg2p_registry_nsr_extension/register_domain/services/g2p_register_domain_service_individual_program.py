@@ -2,7 +2,7 @@ import logging
 
 from openg2p_registry_core.services import G2PRegisterDomainService
 
-from .utils.validations import validate_program_records
+from .utils.validations import fallback_record_name, validate_program_records
 
 _logger = logging.getLogger("g2p-register-individualprogram-service")
 
@@ -39,4 +39,4 @@ class G2PRegisterDomainServiceIndividualProgram(G2PRegisterDomainService):
             if str(payload.get(key) or "").strip()
         )
 
-        return " ".join(record_name).strip()
+        return " ".join(record_name).strip() or fallback_record_name(payload, "Individual program")

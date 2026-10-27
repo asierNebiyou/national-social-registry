@@ -2,6 +2,8 @@ import logging
 
 from openg2p_registry_core.services import G2PRegisterDomainService
 
+from .utils.validations import fallback_record_name
+
 _logger = logging.getLogger("g2p-register-domain-service")
 
 
@@ -40,4 +42,4 @@ class G2PRegisterDomainServiceHouseholdAsset(G2PRegisterDomainService):
             for key in keys
             if str(payload.get(key) or "").strip()
         )
-        return " ".join(record_name).strip()
+        return " ".join(record_name).strip() or fallback_record_name(payload, "Asset")

@@ -79,6 +79,20 @@ def is_blank(value) -> bool:
     return False
 
 
+def fallback_record_name(payload: dict, label: str) -> str:
+    """Name for a payload carrying none of the domain's naming fields.
+
+    A DELETE-only change request only carries internal_record_id, and the
+    platform renders an empty record_name as "-". Prefer the functional id,
+    then a short internal id, so the change request list still says what it is.
+    """
+    for key in ("functional_record_id", "internal_record_id"):
+        value = str(payload.get(key) or "").strip()
+        if value:
+            return f"{label} {value[:8]}"
+    return label
+
+
 def ensure_no_duplicate_key(records: list[dict], key: str, message: str) -> None:
     seen: set[str] = set()
     for record in records:
