@@ -76,6 +76,12 @@ registry:
       repository: openg2p/openg2p-nsr-celery
       tag: 0.0.0-develop
   celeryBeat:
+    # WARNING: Do not remove this until the platform default is fixed.
+    # Celery-beat schedules jobs and posts them to the 'celery' queue.
+    # If the beat pod does not consume this queue (-Q celery), background jobs 
+    # (imports, duplicates, exports) will silently pile up and fail to process.
+    envVars:
+      CELERY_OPTS: "worker --beat -Q celery --loglevel=info --schedule=/tmp/celery-beat-schedule.db"
     image:
       repository: openg2p/openg2p-nsr-celery
       tag: 0.0.0-develop
