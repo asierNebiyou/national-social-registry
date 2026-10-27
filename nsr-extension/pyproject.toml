@@ -26,6 +26,13 @@ dependencies = [
 
 dynamic = ["version"]
 
+[project.optional-dependencies]
+# pip install -e 'nsr-extension[test]' && pytest nsr-extension/tests
+test = [
+  "pytest",
+  "pytest-asyncio",
+]
+
 [project.urls]
 Homepage = "https://openg2p.org"
 Documentation = "https://docs.openg2p.org/"
