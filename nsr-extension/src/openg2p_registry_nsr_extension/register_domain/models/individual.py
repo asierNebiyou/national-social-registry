@@ -41,6 +41,7 @@ class G2PIndividual:
     citizenship_category: Mapped[CitizenshipCategoryEnum] = mapped_column(String, nullable=True)
 
     relationship_to_head: Mapped[RelationshipToHeadEnum] = mapped_column(String, nullable=True)
+    is_head: Mapped[bool] = mapped_column(Boolean, nullable=True)
     residency_status: Mapped[ResidencyStatusEnum] = mapped_column(String, nullable=True)
     dependency_indicator: Mapped[bool] = mapped_column(Boolean, nullable=True)
 

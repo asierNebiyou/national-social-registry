@@ -18,7 +18,7 @@
 {%- elif v == 'SIBLING' -%}sibling
 {%- elif v == 'OTHER_RELATIVE' -%}relative
 {%- elif v == 'NON_RELATIVE' -%}associate
-{%- elif v == 'SELF' -%}self
+{%- elif is_head -%}self
 {%- elif v -%}{{ v | string | trim | lower | replace('_', ' ') }}
 {%- else -%}relative
 {%- endif -%}

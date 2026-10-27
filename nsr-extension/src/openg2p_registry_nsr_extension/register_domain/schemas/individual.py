@@ -41,6 +41,7 @@ class G2PSchemaIndividual:
     citizenship_category: Optional[CitizenshipCategoryEnum] = None
 
     relationship_to_head: Optional[RelationshipToHeadEnum] = None
+    is_head: Optional[bool] = None
     residency_status: Optional[ResidencyStatusEnum] = None
     dependency_indicator: Optional[bool] = None
 

@@ -183,11 +183,9 @@ SELECT
     (i.estimated_age >= 65)                    AS is_elderly,
     COALESCE(i.marital_status, 'NA')                    AS marital_status,
     COALESCE(i.relationship_to_head, 'NA')              AS relationship_to_head,
-    -- SELF, not HEAD: RelationshipToHeadEnum names the head's own row SELF.
-    -- This read 'HEAD' and agreed with the sample generator, but neither matched
-    -- the enum. Aligning the generator alone would silently make is_head false
-    -- for every household — and every headship metric with it.
-    (i.relationship_to_head = 'SELF')          AS is_head,
+    -- The household head is identified by the is_head boolean,
+    -- not by the relationship_to_head value.
+    COALESCE(i.is_head, FALSE)         AS is_head,
     COALESCE(i.citizenship_category, 'NA')              AS citizenship_category,
     COALESCE(i.residency_status, 'NA')                  AS residency_status,
     i.dependency_indicator,

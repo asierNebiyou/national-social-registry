@@ -189,7 +189,7 @@ TENURE = [("OWNED", 62), ("RENTED", 18), ("HOSTED", 12), ("TEMPORARY", 8)]
 HEADSHIP = ["MALE_HEADED", "FEMALE_HEADED", "CHILD_HEADED", "ELDERLY_HEADED"]
 # Must be members of the extension's ProgramEnum
 # (nsr-extension/.../register_domain/models/enums.py), which in turn matches the
-# PROGRAM_NAME value_id rows in g2p_attribute_values.
+# PROGRAM_NAME code list in Master Data.
 #
 # program_name is a plain String column, not a native PG enum, so an invalid
 # value INSERTs happily and only surfaces later — the API rejects the row on
@@ -224,13 +224,13 @@ PROGRAM_NAMES, PROGRAM_WEIGHTS = names_and_weights(PROGRAMS)
 TENURE_NAMES, TENURE_WEIGHTS = names_and_weights(TENURE)
 DISPLACEMENT_NAMES, DISPLACEMENT_WEIGHTS = names_and_weights(DISPLACEMENT)
 PASTORALIST_NAMES, PASTORALIST_WEIGHTS = names_and_weights(PASTORALIST)
-# SELF, not HEAD — RelationshipToHeadEnum names the head's own row SELF.
-RELATIONSHIPS = ["SELF", "SPOUSE", "CHILD", "PARENT", "SIBLING", "OTHER_RELATIVE"]
+# The household head is marked using is_head, not a SELF relationship.
+RELATIONSHIPS = ["SPOUSE", "CHILD", "PARENT", "SIBLING", "OTHER_RELATIVE"]
 MARITAL = ["SINGLE", "MARRIED", "WIDOWED", "DIVORCED", "SEPARATED"]
 
 
 # Which generator constant feeds which code list. Anything listed here is
-# reconciled against the registry's own g2p_attribute_values before use.
+# reconciled against Master Data's list of the same code before use.
 CODE_LISTS = {
     "DISPLACEMENT": "DISPLACEMENT_STATUS",
     "HEADSHIP": "HEADSHIP_TYPE",
@@ -249,43 +249,31 @@ HOUSING_LISTS = {
 }
 
 
-def read_code_lists(conn):
-    """attribute_id -> ordered value codes, from the registry's own tables."""
-    with conn.cursor() as cur:
-        cur.execute("select to_regclass('public.g2p_attribute_values')")
-        if cur.fetchone()[0] is None:
-            return {}
-        cur.execute("select attribute_id, value_code from g2p_attribute_values"
-                    " order by attribute_id, sort_order")
-        out = {}
-        for aid, code in cur.fetchall():
-            out.setdefault(aid, []).append(code)
+def read_code_lists(mds):
+    """attribute_id -> ordered value codes, from Master Data's API.
+
+    Never the registry's own g2p_attribute_values: the registry reads its code
+    lists live from Master Data, so that table can be empty.
+    """
+    from mds_client import MdsError
+
+    out = {}
+    for aid in sorted(set(CODE_LISTS.values()) | set(HOUSING_LISTS.values())):
+        try:
+            values = mds.list_values(aid)
+        except MdsError as exc:
+            raise SystemExit(
+                f"[bulk-seed] could not read code list {aid} from Master Data: {exc}")
+        if not values:
+            print(f"[bulk-seed] WARNING: Master Data has no {aid} list — its "
+                  "built-in values are generated unchecked")
+            continue
+        out[aid] = [v["value_code"] for v in values]
     return out
 
 
-def head_relationship(conn, fallback):
-    """The value meaning 'head of household', asked for by ROLE.
-
-    Not by position and not by name. `RELATIONSHIPS[0]` happened to be SELF, so
-    every head was labelled correctly only for as long as a country used that
-    code in that slot — and a country that does not would have had every head
-    silently mislabelled, with no error anywhere.
-    """
-    with conn.cursor() as cur:
-        cur.execute("select to_regclass('public.g2p_attribute_value_roles')")
-        if cur.fetchone()[0] is None:
-            return fallback
-        cur.execute("""
-            select v.value_code from g2p_attribute_values v
-              join g2p_attribute_value_roles r on r.value_id = v.value_id
-             where r.role = 'head_of_household' order by v.sort_order limit 1
-        """)
-        row = cur.fetchone()
-    return row[0] if row else fallback
-
-
-def reconcile_with_code_lists(conn):
-    """Drop generated values the registry's code lists do not contain.
+def reconcile_with_code_lists(mds):
+    """Drop generated values Master Data's code lists do not contain.
 
     The lists here are hand-written and ordered — deprived_pick reads them
     worst-to-best, so the ORDER carries the deprivation gradient and cannot be
@@ -297,11 +285,11 @@ def reconcile_with_code_lists(conn):
     reported, not added — inserting it into a worst-to-best sequence at an
     arbitrary point would silently change what the data says about poverty.
     """
-    seeded = read_code_lists(conn)
+    seeded = read_code_lists(mds)
     if not seeded:
-        print("[bulk-seed] no code lists in this registry — generating from "
-              "built-in values")
-        return
+        raise SystemExit(
+            "[bulk-seed] Master Data has none of the code lists this script uses — "
+            "load a country pack into Master Data first.")
 
     g = globals()
     dropped, unused = [], []
@@ -340,10 +328,7 @@ def reconcile_with_code_lists(conn):
         stem = {"PROGRAMS": "PROGRAM"}.get(base, base)
         g[f"{stem}_NAMES"], g[f"{stem}_WEIGHTS"] = names_and_weights(g[base])
 
-    g["RELATIONSHIPS"] = ([head_relationship(conn, g["RELATIONSHIPS"][0])]
-                          + [r for r in g["RELATIONSHIPS"]
-                             if r != head_relationship(conn, g["RELATIONSHIPS"][0])])
-    print(f"[bulk-seed] head of household = {g['RELATIONSHIPS'][0]!r} (by role)")
+
     if dropped:
         print("[bulk-seed] not generating values absent from this registry's lists:")
         for d in dropped: print(f"[bulk-seed]     {d}")
@@ -895,7 +880,7 @@ def generate(conn, mds, args, dist, rng):
                 "educational_status": education,
                 "occupation": livelihood,
                 "registration_date": base,
-                "relationship_to_head": RELATIONSHIPS[0] if is_head else rng.choice(RELATIONSHIPS[1:]),
+                "relationship_to_head": None if is_head else rng.choice(RELATIONSHIPS),
                 "is_head": is_head,
                 # CitizenshipCategoryEnum has no NON_CITIZEN; RESIDENT is the
                 # non-citizen-but-settled category.
@@ -1104,9 +1089,14 @@ def main():
             print("[bulk-seed] Re-run with --purge first to regenerate.")
             return 0
 
-    # Before anything is generated: keep only values this registry's code lists
-    # actually contain, and find the head-of-household value by role.
-    reconcile_with_code_lists(conn)
+    # Code lists and geography are Master Data's, read through its API (never its
+    # database) as this registry's own client. Opened here, after the
+    # purge/already-seeded exits, which need neither.
+    mds = mds_client()
+
+    # Before anything is generated: keep only values Master Data's code lists
+    # actually contain.
+    reconcile_with_code_lists(mds)
 
     dist = load_distributions(args.distributions, rng)
 
@@ -1133,10 +1123,7 @@ def main():
     started = datetime.now()
     print(f"[bulk-seed] target {args.db} @ {dsn['host']}:{dsn['port']}"
           f"{' (DRY RUN)' if args.dry_run else ''}")
-    # The geography is Master Data's, read through its API (never its database)
-    # as this registry's own client. Opened here, after the purge/already-seeded
-    # exits, which need no geography.
-    totals = generate(conn, mds_client(), args, dist, rng)
+    totals = generate(conn, mds, args, dist, rng)
     elapsed = (datetime.now() - started).total_seconds()
 
     print(f"\n[bulk-seed] done in {elapsed:.0f}s")

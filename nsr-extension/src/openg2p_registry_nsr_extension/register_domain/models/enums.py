@@ -25,7 +25,6 @@ class ResidencyStatusEnum(str, enum.Enum):
 
 
 class RelationshipToHeadEnum(str, enum.Enum):
-    SELF = "SELF"
     SPOUSE = "SPOUSE"
     CHILD = "CHILD"
     PARENT = "PARENT"

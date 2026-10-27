@@ -216,6 +216,7 @@
   "RAINWATER": "Rainwater",
   "REFUGEE": "Refugee",
   "relationship_to_head": "Relationship To Head",
+  "is_head": "Head of Household",
   "REMITTANCE": "Remittance",
   "RENTED": "Rented",
   "residency_status": "Residency Status",

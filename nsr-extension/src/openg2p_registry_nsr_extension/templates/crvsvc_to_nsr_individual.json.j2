@@ -88,14 +88,14 @@
 {%- endmacro -%}
 {%- macro rel_to_head(raw) -%}
 {%- set s = norm(raw) | replace(' ', '_') -%}
-{%- if s == 'SELF' -%}SELF
+{%- if s == 'SELF' -%}
 {%- elif s == 'SPOUSE' -%}SPOUSE
 {%- elif s == 'CHILD' -%}CHILD
 {%- elif s == 'PARENT' -%}PARENT
 {%- elif s == 'SIBLING' -%}SIBLING
 {%- elif 'OTHER' in s -%}OTHER_RELATIVE
 {%- elif s -%}OTHER
-{%- else -%}SELF
+{%- else -%}
 {%- endif -%}
 {%- endmacro -%}
 {%- macro residency_enum(raw) -%}
@@ -786,6 +786,9 @@
 {%- if rel_raw | length > 0 -%}
 {%- if not rj.first -%},{%- endif -%}
 "relationship_to_head": {{ rel_to_head(addl.get('relationship_to_head')) | tojson }}
+{%- set rj.first = false -%}
+{%- if not rj.first -%},{%- endif -%}
+"is_head": {{ (norm(addl.get('relationship_to_head')) == 'SELF') | tojson }}
 {%- set rj.first = false -%}
 {%- endif -%}
 {%- if addl.get('dependency_indicator') is not none -%}
