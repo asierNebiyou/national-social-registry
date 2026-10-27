@@ -8,6 +8,7 @@ from openg2p_registry_core.schemas import (
     G2PGeoHistorySchema,
     G2PIntakeFormSchemaBase,
 )
+from .address import G2PAddressLinesSchema
 from ..models.enums import (
     CookingFuelEnum,
     DwellingTypeEnum,
@@ -54,7 +55,9 @@ class G2PSchemaHousehold:
     mobile_phone_type: Optional[MobilePhoneTypeEnum] = None
 
 
-class G2PRegisterSchemaHousehold(G2PRegisterBaseSchema, G2PGeoSchema, G2PSchemaHousehold):
+class G2PRegisterSchemaHousehold(
+    G2PRegisterBaseSchema, G2PGeoSchema, G2PAddressLinesSchema, G2PSchemaHousehold
+):
     """
     Schema for Household register.
     Inherits fields from G2PRegisterBaseSchema and G2PGeoSchema.
@@ -74,7 +77,11 @@ class G2PRegisterHistorySchemaHousehold(G2PRegisterHistorySchema, G2PGeoHistoryS
 
 
 class G2PIntakeFormSchemaHousehold(
-    G2PIntakeFormSchemaBase, G2PRegisterBaseSchema, G2PGeoSchema, G2PSchemaHousehold
+    G2PIntakeFormSchemaBase,
+    G2PRegisterBaseSchema,
+    G2PGeoSchema,
+    G2PAddressLinesSchema,
+    G2PSchemaHousehold,
 ):
     """
     Schema for Household intake form.

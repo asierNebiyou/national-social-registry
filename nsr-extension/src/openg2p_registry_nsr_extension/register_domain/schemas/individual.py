@@ -10,6 +10,7 @@ from openg2p_registry_core.schemas import (
     G2PGeoHistorySchema,
     G2PIntakeFormSchemaBase,
 )
+from .address import G2PAddressLinesSchema
 from ..models.enums import (
     AgeMethodEnum,
     CitizenshipCategoryEnum,
@@ -62,7 +63,11 @@ class G2PSchemaIndividual:
 
 
 class G2PRegisterSchemaIndividual(
-    G2PRegisterBaseSchema, G2PPersonSchema, G2PGeoSchema, G2PSchemaIndividual
+    G2PRegisterBaseSchema,
+    G2PPersonSchema,
+    G2PGeoSchema,
+    G2PAddressLinesSchema,
+    G2PSchemaIndividual,
 ):
     """
     Schema for Individual register.
@@ -86,6 +91,7 @@ class G2PIntakeFormSchemaIndividual(
     G2PRegisterBaseSchema,
     G2PPersonSchema,
     G2PGeoSchema,
+    G2PAddressLinesSchema,
     G2PSchemaIndividual,
 ):
     """
