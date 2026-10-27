@@ -25,5 +25,7 @@ INSERT INTO "public"."g2p_register_ui_tab_sections" ("tab_section_id","register_
 ('6be214b3-508c-42ce-bff0-e32a05dd9764','a0000000-0000-4000-8000-000000000001','7bf586e3-ba57-45d0-9093-1747f038da16','d1e81461-ee90-483f-8cf2-19028657bca1',1),
 ('cb749b9e-9208-42d7-90c0-9c46d17b342c','a0000000-0000-4000-8000-000000000001','7bf586e3-ba57-45d0-9093-1747f038da16','6d5285d3-fa8d-4753-87cd-822bb2ce7658',2),
 ('39c5ed33-04a7-4ff7-aeeb-c01b129a95f0','a0000000-0000-4000-8000-000000000001','7bf586e3-ba57-45d0-9093-1747f038da16','b47ae24b-340a-4974-a90a-655a3a642b13',3),
-('1be425e9-20a9-427a-a454-c6311b2b9ccb','a0000000-0000-4000-8000-000000000002','housing_services_tab','hh_dwelling_services',0);
+('1be425e9-20a9-427a-a454-c6311b2b9ccb','a0000000-0000-4000-8000-000000000002','housing_services_tab','hh_dwelling_services',0)
+ON CONFLICT ("tab_section_id") DO UPDATE SET "register_id" = EXCLUDED."register_id", "tab_id" = EXCLUDED."tab_id", "section_id" = EXCLUDED."section_id", "section_order" = EXCLUDED."section_order"
+;
 

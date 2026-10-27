@@ -18,5 +18,7 @@ INSERT INTO "public"."g2p_intake_form_ui_tab_sections" ("tab_section_id","tab_id
 ('7b0fba3e-97ef-42c0-a9bc-50623c46c4cf','nsr_form_tab_household_intake','hh_table_program_enrolments',9),
 ('b6493ee8-27a0-4ee3-9420-cce28e1bb4b1','nsr_form_tab_household_intake','hh_roster',10),
 ('c8e45540-6704-4848-96bc-b50ce008b0d4','nsr_form_tab_individual_intake','in_demographic_details',3),
-('99a993b3-9460-449e-9da8-031c09ee5586','nsr_form_tab_individual_intake','in_contact_details',4);
+('99a993b3-9460-449e-9da8-031c09ee5586','nsr_form_tab_individual_intake','in_contact_details',4)
+ON CONFLICT ("tab_section_id") DO UPDATE SET "tab_id" = EXCLUDED."tab_id", "section_id" = EXCLUDED."section_id", "section_order" = EXCLUDED."section_order"
+;
 

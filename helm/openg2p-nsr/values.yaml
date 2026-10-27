@@ -80,6 +80,13 @@ registry:
       repository: openg2p/openg2p-nsr-celery
       tag: 0.0.0-develop
   dbSeed:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 256Mi
+      limits:
+        # Note: FR uses 1Gi. NSR's seed is larger; adjust this if OOMKilled occurs during large (250k) seeding.
+        memory: 1Gi
     image:
       repository: openg2p/openg2p-nsr-db-seed
       tag: 0.0.0-develop
@@ -92,11 +99,6 @@ registry:
     loadSampleData: true
     loadImages: true
     loadTemplates: true
-    # Copy the country's code lists from Master Data's API into this registry's
-    # own attribute tables (LOAD_ATTRIBUTES, load_attributes_from_mds.py in the
-    # pinned openg2p-registry). Inert on platform versions that read code lists
-    # live from Master Data, which dropped the setting; remove it with that pin.
-    loadAttributes: true
 
   # staffUi and beneApi are consumed as-is from the openg2p-registry base images
   # (subchart defaults already point at openg2p/openg2p-registry-*), so they are
