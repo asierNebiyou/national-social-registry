@@ -28,14 +28,17 @@ select json_build_object(
   'age_band', (
     select json_agg(row_to_json(x)) from (
       select case
-               when estimated_age < 5  then 'Under 5'
-               when estimated_age < 18 then 'School age (5-17)'
-               when estimated_age < 65 then 'Working age (18-64)'
+               when age < 5  then 'Under 5'
+               when age < 18 then 'School age (5-17)'
+               when age < 65 then 'Working age (18-64)'
                else 'Elderly (65+)'
              end as age_band,
              count(*)::bigint as c
-      from g2p_register_individuals
-      where estimated_age is not null group by 1) x),
+      -- birth_date XOR estimated_age: age comes from whichever is set.
+      from (select coalesce(date_part('year', age(current_date, birth_date))::int,
+                            estimated_age) as age
+            from g2p_register_individuals) i
+      where age is not null group by 1) x),
 
   'livelihood', (
     select json_agg(row_to_json(x)) from (
