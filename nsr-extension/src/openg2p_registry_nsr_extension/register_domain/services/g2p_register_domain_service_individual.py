@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .utils.validations import (
     as_bool,
-    as_int,
     fallback_record_name,
     has_keys,
     is_blank,
@@ -153,17 +152,18 @@ class G2PRegisterDomainServiceIndividual(G2PRegisterDomainService):
             validation_error("birth_date must not be in the future")
 
     def _validate_estimated_age(self, record: dict) -> None:
+        # Birth date and estimated age are alternatives: a person's age is
+        # either documented (birth_date) or estimated (estimated_age), never
+        # both. The staff UI freezes one field while the other has a value;
+        # this rejects the same combination from any other source (ODK,
+        # imports, API change requests).
         if not has_keys(record, "birth_date", "estimated_age"):
             return
-        birth_date = parse_date(record.get("birth_date"))
-        estimated_age = as_int(record.get("estimated_age"))
-        if birth_date is None or estimated_age is None:
+        if is_blank(record.get("birth_date")) or is_blank(record.get("estimated_age")):
             return
-        computed_age = self._calculate_age(birth_date)
-        if computed_age is not None and abs(estimated_age - computed_age) > 1:
-            validation_error(
-                "estimated_age must be consistent with birth_date within one year"
-            )
+        validation_error(
+            "Provide either birth_date or estimated_age, not both"
+        )
 
     def construct_search_text(self, payload: dict, extra: list[str] = None) -> str:
         _logger.info("Constructing search text for individual")

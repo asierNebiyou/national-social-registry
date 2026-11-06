@@ -914,6 +914,14 @@ def generate(conn, mds, args, dist, rng):
                 "geo_code_hierarchy_json": gj,
                 "country_code": args.country_code,
             }
+            # birth_date and estimated_age are alternatives (the registry
+            # rejects both); keep the one age_method says was recorded. Both
+            # are still drawn above so the random stream — and so every other
+            # generated value — is unchanged.
+            if ind["age_method"] == "DOCUMENTED":
+                ind["estimated_age"] = None
+            else:
+                ind["birth_date"] = None
             ind.update(envelope("IND", ind_seq, link=hh_id))
             ind["internal_record_id"] = i_id
             tables["ind"].add(ind)

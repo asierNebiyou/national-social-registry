@@ -1,5 +1,7 @@
 from datetime import date
-from typing import List, Optional
+from typing import Annotated, List, Optional
+
+from pydantic import BeforeValidator
 
 from openg2p_registry_core.schemas import (
     G2PRegisterBaseSchema,
@@ -26,6 +28,23 @@ from ..models.enums import (
 )
 
 
+def _as_name_list(value):
+    """Accept alias names typed into a text box as well as a list.
+
+    The staff UI renders alias_names as a single text input, so a change
+    request carries "bth" or "bth, brenty" rather than a list. Left as a
+    string it was accepted on save but failed when the approved change was
+    applied, leaving the change request PENDING forever.
+    """
+    if isinstance(value, str):
+        names = [part.strip() for part in value.split(",")]
+        return [name for name in names if name] or None
+    return value
+
+
+AliasNames = Annotated[Optional[List[str]], BeforeValidator(_as_name_list)]
+
+
 class G2PSchemaIndividual:
 
     foundational_id_masked: Optional[str] = None
@@ -34,7 +53,7 @@ class G2PSchemaIndividual:
     legacy_program_ids: Optional[dict] = None
 
     full_name: Optional[str] = None
-    alias_names: Optional[List[str]] = None
+    alias_names: AliasNames = None
 
     estimated_age: Optional[int] = None
     age_method: Optional[AgeMethodEnum] = None

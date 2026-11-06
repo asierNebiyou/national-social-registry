@@ -175,12 +175,16 @@ SELECT
     i.gender,
     (i.gender = 'FEMALE')                      AS is_female,
     i.estimated_age,
-    CASE WHEN i.estimated_age < 5   THEN 'Under 5'
-         WHEN i.estimated_age < 18  THEN 'School age (5-17)'
-         WHEN i.estimated_age < 65  THEN 'Working age (18-64)'
+    -- A person has either a documented birth_date or an estimated_age, never
+    -- both (the registry rejects both), so age comes from whichever is set.
+    a.age,
+    CASE WHEN a.age IS NULL THEN 'Unknown'
+         WHEN a.age < 5     THEN 'Under 5'
+         WHEN a.age < 18    THEN 'School age (5-17)'
+         WHEN a.age < 65    THEN 'Working age (18-64)'
          ELSE 'Elderly (65+)' END              AS age_band,
-    (i.estimated_age < 18)                     AS is_child,
-    (i.estimated_age >= 65)                    AS is_elderly,
+    (a.age < 18)                               AS is_child,
+    (a.age >= 65)                              AS is_elderly,
     COALESCE(i.marital_status, 'NA')                    AS marital_status,
     COALESCE(i.relationship_to_head, 'NA')              AS relationship_to_head,
     -- The household head is identified by the is_head boolean,
@@ -234,7 +238,13 @@ SELECT
     hh.size_total                              AS household_size
 FROM g2p_register_individuals i
 LEFT JOIN nsr_rpt_household hh
-       ON hh.household_id = i.link_internal_record_id;
+       ON hh.household_id = i.link_internal_record_id
+CROSS JOIN LATERAL (
+    SELECT COALESCE(
+               date_part('year', age(current_date, i.birth_date))::int,
+               i.estimated_age
+           ) AS age
+) a;
 
 COMMENT ON MATERIALIZED VIEW nsr_rpt_individual IS
     'One row per individual with household geography, poverty and enrolment '

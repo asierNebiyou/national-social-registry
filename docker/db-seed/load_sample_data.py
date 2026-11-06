@@ -14,6 +14,7 @@ import json
 import os
 import sys
 import uuid
+from datetime import date
 from pathlib import Path
 
 import psycopg2
@@ -322,17 +323,13 @@ def load_people_from_mds() -> tuple:
             "last_name": i.get("fathers_name"),
             "given_name": i.get("given_name"),
             "gender": i.get("gender"),
-            # The pack carries a full birth_date. Older packs carry only
-            # birth_year, and this fell back to 1 January for them — which put
-            # every sample person in the country on the same birthday, so any
-            # chart binned by month or day showed one enormous January spike.
-            # The fallback stays for those packs; it is not a precision the
-            # sample has, it is the only date its column can hold.
-            "birth_date": (
-                i.get("birth_date")
-                or (f"{i['birth_year']}-01-01" if i.get("birth_year") else None)
-            ),
-            "estimated_age": i.get("age"),
+            # birth_date and estimated_age are alternatives (the registry
+            # rejects both): a person's age is either DOCUMENTED by a full
+            # birth_date or ESTIMATED. The pack carries a full birth_date;
+            # older packs carry only birth_year, which is an estimate, not a
+            # date — so those people get estimated_age instead of a made-up
+            # 1 January birthday.
+            **_age_fields(i),
             "marital_status": i.get("marital_status"),
             "education_level": i.get("education_level"),
             "foundational_id": i.get("national_id"),
@@ -530,6 +527,20 @@ def _read_csv_rows(path: Path, json_columns: set[str]) -> list[dict]:
         return out
 
 
+
+def _age_fields(i: dict) -> dict:
+    """birth_date XOR estimated_age, with the matching age_method."""
+    if i.get("birth_date"):
+        return {"birth_date": i["birth_date"], "estimated_age": None, "age_method": "DOCUMENTED"}
+    age = i.get("age")
+    if age is None and i.get("birth_year"):
+        age = date.today().year - int(i["birth_year"])
+    return {
+        "birth_date": None,
+        "estimated_age": age,
+        "age_method": "ESTIMATED" if age is not None else None,
+    }
+
 def _as_int(v):
     return int(v) if v not in (None, "") else None
 
@@ -624,7 +635,7 @@ def insert_individuals(cur, individuals: list[dict]) -> None:
                 "VERIFIED",
                 ind["full_name"],
                 _as_int(ind.get("estimated_age")),
-                "DOCUMENTED",
+                ind["age_method"],
             )
         )
     sql = (
